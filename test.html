@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Telegram User Test</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <h2>Telegram WebApp Test</h2>
+    <pre id="info"></pre>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        const user = tg.initDataUnsafe?.user;
+        if (user && user.id) {
+            document.getElementById('info').innerHTML = `✅ Auto-login success!<br>User ID: ${user.id}<br>First name: ${user.first_name}`;
+        } else {
+            document.getElementById('info').innerHTML = `❌ No user data.<br>initDataUnsafe: ${JSON.stringify(tg.initDataUnsafe)}`;
+        }
+    </script>
+</body>
+</html>
