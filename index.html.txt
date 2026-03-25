@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>P2E Miner</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, 'Inter', sans-serif; }
+        body { background: var(--tg-theme-bg-color, #0f172a); color: var(--tg-theme-text-color, #e2e8f0); padding: 12px; }
+        .container { max-width: 700px; margin: 0 auto; background: rgba(15,25,45,0.9); border-radius: 28px; padding: 18px; }
+        .login-card { background: #1e293b; border-radius: 28px; padding: 18px; margin-bottom: 20px; }
+        input, button { background: #0f172a; border: 1px solid #334155; padding: 10px 14px; border-radius: 28px; color: white; width: 100%; margin-bottom: 8px; }
+        button { background: #3b82f6; border: none; cursor: pointer; font-weight: bold; }
+        .debug-info { background: #2d3748; border-radius: 12px; padding: 10px; font-size: 12px; margin-top: 12px; color: #facc15; }
+        .balance-card { background: linear-gradient(135deg, #1f2b48, #0f172a); border-radius: 28px; padding: 18px; text-align: center; margin-bottom: 20px; }
+        .balance-amount { font-size: 2.5rem; font-weight: bold; color: #facc15; }
+        .mining-card { background: #0f172a; border-radius: 28px; padding: 16px; text-align: center; margin-bottom: 20px; }
+        .timer { font-family: monospace; font-size: 2rem; background: #00000055; display: inline-block; padding: 8px 20px; border-radius: 60px; margin: 12px 0; }
+        .claim-btn { background: #10b981; padding: 12px 24px; border-radius: 60px; font-weight: bold; width: auto; }
+        .section-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+        .tab-btn { background: transparent; border: none; padding: 8px 16px; border-radius: 40px; color: #94a3b8; cursor: pointer; }
+        .tab-btn.active { background: #3b82f6; color: white; }
+        .tab-pane { display: none; margin-top: 16px; }
+        .tab-pane.active { display: block; }
+        .list-item { background: #1e293b; padding: 12px; border-radius: 20px; margin-bottom: 12px; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .btn-small { background: #3b82f6; padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; width: auto; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 16px;">
+        <button class="lang-btn" data-lang="my">🇲🇲 မြန်မာ</button>
+        <button class="lang-btn" data-lang="en">🇬🇧 English</button>
+    </div>
+
+    <!-- Login Section -->
+    <div id="loginSection" class="login-card">
+        <div class="flex-between">
+            <span><i class="fab fa-telegram"></i> Telegram User ID</span>
+            <input type="text" id="telegramUidInput" placeholder="123456789" style="width: 70%;">
+        </div>
+        <button id="loginBtn"><i class="fas fa-sign-in-alt"></i> Login</button>
+        <small id="uidHint">👉 သင့် Telegram User ID ကို ထည့်ပါ (သို့) Telegram ထဲက Menu ခလုတ်ကနေ ဖွင့်ပါက auto-login ဖြစ်ပါမည်။</small>
+        <div id="debugInfo" class="debug-info" style="display: none;"></div>
+    </div>
+
+    <!-- Main App (hidden initially) -->
+    <div id="appContent" style="display: none;">
+        <div class="balance-card">
+            <div><span id="balanceLabel">💰 P2E Balance</span></div>
+            <div class="balance-amount" id="coinBalance">0</div>
+            <div class="kyat-value" id="kyatValue">≈ 0 MMK</div>
+            <div class="rate-badge" id="miningRateDisplay">⚡ Mining Rate: x1.00</div>
+        </div>
+
+        <div class="mining-card">
+            <div><i class="fas fa-hard-hat"></i> <span id="miningTitle">24H Mining</span></div>
+            <div class="timer" id="countdownTimer">--:--:--</div>
+            <button class="claim-btn" id="claimMiningBtn"><span id="claimText">Claim 10 P2E</span></button>
+            <div><small id="dailyNote">Daily reward: 10 base coins × rate</small></div>
+        </div>
+
+        <div class="section-tabs">
+            <button class="tab-btn active" data-tab="referral">Refer</button>
+            <button class="tab-btn" data-tab="shop">Packs</button>
+            <button class="tab-btn" data-tab="tasks">Tasks</button>
+            <button class="tab-btn" data-tab="withdraw">Withdraw</button>
+            <button class="tab-btn" data-tab="deposit">Deposit</button>
+            <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
+            <button class="tab-btn" data-tab="news">News</button>
+        </div>
+
+        <div id="referralPane" class="tab-pane active">...</div>
+        <div id="shopPane" class="tab-pane">...</div>
+        <div id="tasksPane" class="tab-pane">...</div>
+        <div id="withdrawPane" class="tab-pane">...</div>
+        <div id="depositPane" class="tab-pane">...</div>
+        <div id="leaderboardPane" class="tab-pane">...</div>
+        <div id="newsPane" class="tab-pane">...</div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+    // ========== FIREBASE ==========
+    const firebaseConfig = {
+        apiKey: "AIzaSyCdnrglXQBKkUdZBB-MKFiyM7S9bIDn25M",
+        authDomain: "p2e-income-3804a.firebaseapp.com",
+        databaseURL: "https://p2e-income-3804a-default-rtdb.firebaseio.com",
+        projectId: "p2e-income-3804a",
+        storageBucket: "p2e-income-3804a.firebasestorage.app",
+        messagingSenderId: "378395336618",
+        appId: "1:378395336618:web:fa165138b2585e421e15d3"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentUID = null, userData = null, miningInterval = null, currentLang = 'my';
+
+    const translations = {
+        my: { balance: "💰 P2E လက်ကျန်", dailyNote: "နေ့စဉ် ဆု: 10 × နှုန်း", claimBtn: "Claim လုပ်မည်", miningTitle: "၂၄ နာရီ တူးဖော်မှု", rateLabel: "တူးနှုန်း" },
+        en: { balance: "💰 P2E Balance", dailyNote: "Daily reward: 10 × rate", claimBtn: "Claim Now", miningTitle: "24H Mining", rateLabel: "Mining Rate" }
+    };
+    function t(key) { return translations[currentLang][key] || key; }
+
+    async function refreshUserData() {
+        if (!currentUID) return;
+        const snap = await db.ref(`users/${currentUID}`).once('value');
+        userData = snap.val() || { balance: 0, referralCount: 0, purchasedBoost: 0, lastClaimTime: 0 };
+        if (!userData.completedTasks) userData.completedTasks = {};
+        userData.miningRate = 1 + (userData.referralCount||0)*0.05 + (userData.purchasedBoost||0);
+        document.getElementById("coinBalance").innerText = Math.floor(userData.balance || 0);
+        document.getElementById("kyatValue").innerHTML = `≈ ${(userData.balance||0)*10} MMK`;
+        document.getElementById("miningRateDisplay").innerHTML = `⚡ ${t('rateLabel')}: x${userData.miningRate.toFixed(2)}`;
+    }
+
+    async function claimDaily() {
+        const last = userData.lastClaimTime || 0;
+        const now = Date.now();
+        if (now - last >= 86400000) {
+            const reward = Math.floor(10 * userData.miningRate);
+            await db.ref(`users/${currentUID}`).update({ balance: (userData.balance||0)+reward, lastClaimTime: now });
+            await refreshUserData();
+            alert(`🎉 +${reward} P2E claimed!`);
+        } else alert(`Please wait ${Math.ceil(24 - (now-last)/3600000)} hours.`);
+    }
+
+    function startMiningTimer() {
+        if (miningInterval) clearInterval(miningInterval);
+        miningInterval = setInterval(() => {
+            if (!userData) return;
+            const diff = 86400000 - (Date.now() - (userData.lastClaimTime||0));
+            if (diff <= 0) {
+                document.getElementById("countdownTimer").innerText = "00:00:00";
+                document.getElementById("claimMiningBtn").disabled = false;
+            } else {
+                const hrs = Math.floor(diff/3600000), mins = Math.floor((diff%3600000)/60000), secs = Math.floor((diff%60000)/1000);
+                document.getElementById("countdownTimer").innerText = `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+                document.getElementById("claimMiningBtn").disabled = true;
+            }
+        }, 1000);
+    }
+
+    async function loginWithUID(uid, tgUser = null) {
+        currentUID = uid;
+        const userRef = db.ref(`users/${uid}`);
+        const snap = await userRef.once('value');
+        if (!snap.exists()) await userRef.set({ balance: 0, totalEarned: 0, miningRate: 1.0, purchasedBoost: 0, referralCount: 0, lastClaimTime: 0 });
+        await refreshUserData();
+        startMiningTimer();
+        document.getElementById("appContent").style.display = "block";
+        document.getElementById("loginSection").style.display = "none";
+    }
+
+    function initTelegram() {
+        const debugDiv = document.getElementById("debugInfo");
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            const user = tg.initDataUnsafe?.user;
+            if (user && user.id) {
+                console.log("✅ Auto-login success", user);
+                loginWithUID(user.id.toString(), user);
+                return true;
+            } else {
+                const msg = "❌ Telegram WebApp detected but NO user data. Make sure you open the app from a Bot menu button or inline keyboard that provides user info.";
+                debugDiv.style.display = "block";
+                debugDiv.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}<br>🔍 initDataUnsafe: ${JSON.stringify(tg.initDataUnsafe)}`;
+                return false;
+            }
+        } else {
+            const msg = "⚠️ Not inside Telegram WebView. Auto-login disabled. Please open from a Telegram Bot using a WebApp menu button.";
+            debugDiv.style.display = "block";
+            debugDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${msg}`;
+            return false;
+        }
+    }
+
+    document.getElementById("loginBtn").onclick = () => {
+        const uid = document.getElementById("telegramUidInput").value.trim();
+        if (uid) loginWithUID(uid);
+        else alert("Enter Telegram User ID");
+    };
+    document.getElementById("claimMiningBtn").onclick = claimDaily;
+
+    document.querySelectorAll(".lang-btn").forEach(btn => btn.onclick = () => {
+        currentLang = btn.dataset.lang;
+        document.querySelectorAll(".lang-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("balanceLabel").innerText = t('balance');
+        document.getElementById("miningTitle").innerText = t('miningTitle');
+        document.getElementById("dailyNote").innerText = t('dailyNote');
+        document.getElementById("claimText").innerText = t('claimBtn');
+        document.getElementById("miningRateDisplay").innerHTML = `⚡ ${t('rateLabel')}: x${userData?.miningRate?.toFixed(2) || 1.00}`;
+    });
+
+    const tabs = ['referral','shop','tasks','withdraw','deposit','leaderboard','news'];
+    tabs.forEach(tab => {
+        const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+        if(btn) btn.onclick = () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.getElementById(`${tab}Pane`).classList.add('active');
+        };
+    });
+
+    initTelegram();
+    for(let p of ['referral','shop','tasks','withdraw','deposit','leaderboard','news']) {
+        let el = document.getElementById(`${p}Pane`);
+        if(el && el.innerHTML.trim() === '') el.innerHTML = `<div class="list-item">${p} content here</div>`;
+    }
+</script>
+</body>
+</html>
